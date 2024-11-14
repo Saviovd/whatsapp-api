@@ -1,8 +1,8 @@
 const { Client, LocalAuth } = require("whatsapp-web.js");
 const qrcode = require("qrcode-terminal");
 const { MessageMedia } = require("whatsapp-web.js");
-const { formatPhoneNumber } = require("../utils/formatPhoneNumber");
 const isUserRegistered = require("../utils/isUserRegistered");
+const { processAnswer } = require("../bot/questionnaire");
 
 const client = new Client({
     authStrategy: new LocalAuth
@@ -26,34 +26,38 @@ client.on("auth_failure", (message) => {
 });
 
 client.on("message", async (msg) => {
+    if (msg.from === 'status@broadcast') return;
     try {
-        console.log("Message received:", msg.body);
-        if (msg.type === 'chat') {
-            if (msg.body.trim() === '!ping') {
-                await msg.reply('pong');
-            }
+        if (msg.body.trim() === '!ping') {
+            await msg.reply('pong');
         }
+        console.log("Message received:", msg.body);
+        const answer = msg.body.trim();
+        processAnswer(msg.from, answer, sendMessage);
     } catch (error) {
         console.error(error);
     }
 });
 
 async function sendMessage(phoneNumber, message, file) {
-    const number = formatPhoneNumber(phoneNumber);
-    const isRegistered = await isUserRegistered(client, number);
+    const numberId = await client.getNumberId(phoneNumber);
+    if (!numberId) {
+        console.error(`Failed to retrieve numberId for ${phoneNumber}.`);
+        return;
+    }
+
+    const isRegistered = await isUserRegistered(client, phoneNumber);
     if (!isRegistered) {
         console.log(`The number ${phoneNumber} is not registered on WhatsApp.`);
         return;
     }
 
-    const numberId = await client.getNumberId(number);
-
     try {
         if (file) {
             const messageFile = new MessageMedia(file.mimetype, file.buffer.toString('base64'));
-            await client.sendMessage(numberId._serialized, messageFile);
+            await client.sendMessage(phoneNumber, messageFile);
         } else {
-            await client.sendMessage(numberId._serialized, message);
+            await client.sendMessage(phoneNumber, message);
         }
     } catch (error) {
         console.error("Error sending message:", error);

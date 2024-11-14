@@ -4,7 +4,7 @@
   "description": "WhatsApp Interceptor",
   "main": "index.js",
   "scripts": {
-    "dev": "env-cmd .env nodemon src/index.js",
+    "dev": "env-cmd .env nodemon src/index.js --ignore src/bot/data",
     "start": "env-cmd .env node src/index.js"
   },
   "author": "Christopher Gomes",
