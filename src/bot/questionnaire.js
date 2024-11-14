@@ -1,9 +1,9 @@
 const { getUser, createUser, updateUser } = require('./users');
 const questionFlow = require('./questions');
+const validateAnswer = require('../utils/validateAnswer');
 
 async function startQuestionnaire(phoneNumber, sendMessage) {
     let user = getUser(phoneNumber);
-    console.log('user: ', user)
 
     if (!user) {
         console.log('Criando novo usuário para o número:', phoneNumber);
@@ -26,14 +26,14 @@ async function startQuestionnaire(phoneNumber, sendMessage) {
 }
 
 async function processAnswer(phoneNumber, answer, sendMessage) {
-    console.log('processAnswer phoneNumber: ', phoneNumber)
     let user = getUser(phoneNumber);
+
     if (!user) {
         console.error(`Erro: Usuário ${phoneNumber} não encontrado ao processar resposta.`);
         return;
     }
 
-    if (user.index === undefined || user.finished) {
+    if (user.finished) {
         console.error(`Usuário ${phoneNumber} já finalizou o questionário.`);
         return;
     }
@@ -45,19 +45,27 @@ async function processAnswer(phoneNumber, answer, sendMessage) {
         return;
     }
 
+    if (!validateAnswer(currentQuestion, answer) && !user.finished) {
+        sendMessage(phoneNumber, "Resposta inválida");
+        setTimeout(() => {
+            sendMessage(phoneNumber, questionFlow[user.index].question);
+        }, 500);
+        return;
+    }
+
     user.responses.push({ question: currentQuestion.question, answer: answer });
     console.log(`Respostas até agora para ${phoneNumber}: ${JSON.stringify(user.responses)}`);
 
     if (currentQuestion.isFinal) {
-        console.log(`Finalizando questionário para ${phoneNumber}.`);
+        updateUser(phoneNumber, { finished: true, responses: [...user.responses] });
         sendMessage(phoneNumber, "Obrigado por participar da pesquisa!");
-        updateUser(phoneNumber, { finished: true });
+        console.error(`Usuário ${phoneNumber} finalizou o questionário.`);
         return;
     }
 
     const nextIndex = user.index + 1;
     if (questionFlow[nextIndex]) {
-        console.log('enviando: ', phoneNumber, questionFlow[nextIndex].question)
+        console.log('enviando: ', phoneNumber, questionFlow[nextIndex].question);
         updateUser(phoneNumber, { index: nextIndex, responses: [...user.responses] });
         sendMessage(phoneNumber, questionFlow[nextIndex].question);
     } else {

@@ -11,12 +11,8 @@ const questionFlow = [
     {
         question: "Por favor, digite seu comentário:",
         isOpenResponse: true,
-        next: {}
-    },
-    {
-        question: "Obrigado por participar da pesquisa!",
         isFinal: true,
         next: {}
-    }
+    },
 ];
 module.exports = questionFlow;
